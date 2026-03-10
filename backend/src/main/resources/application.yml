@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/shop_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: WHJwhj355833
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.shopping3.entity  # 关键修改：包名适配标准SpringBoot结构
+  configuration:
+    map-underscore-to-camel-case: true  # 下划线转驼峰，保留（方便实体类映射）
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 新增：打印SQL日志，方便调试
+
+redis:
+  host: localhost # Redis服务器地址（本地）
+  port: 6379 # Redis端口（默认6379）
+  password: "" # Redis密码（默认无，设置过密码填你的）
+  database: 0 # 使用第0个数据库（Redis默认有16个库）
+  timeout: 10000 # 连接超时时间（毫秒）
+  lettuce: # 连接池配置
+    pool:
+      max-active: 8 # 最大连接数
+      max-idle: 8 # 最大空闲连接
+      min-idle: 0 # 最小空闲连接
+      max-wait: -1 # 最大等待时间（-1表示无限制）
+
+# 新增：SpringBoot日志配置（可选，便于排查问题）
+logging:
+  level:
+    com.example.shopping3: debug  # 你的后端包名，打印该包下的调试日志
+    org.mybatis: debug  # 打印MyBatis执行日志

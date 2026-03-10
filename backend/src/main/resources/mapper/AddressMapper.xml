@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace必须等于Mapper接口全类名 -->
+<mapper namespace="com.example.shopping3.mapper.AddressMapper">
+
+    <!-- 结果映射：数据库字段→实体类属性（驼峰转换已开，可简化） -->
+    <resultMap id="AddressResultMap" type="Address">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="name" property="name"/>
+        <result column="phone" property="phone"/>
+        <result column="address_detail" property="addressDetail"/>
+        <result column="is_default" property="isDefault"/>
+    </resultMap>
+
+    <!-- 查询用户所有地址 -->
+    <select id="getUserAddresses" resultMap="AddressResultMap">
+        SELECT * FROM address WHERE user_id = #{user_id}
+    </select>
+
+    <!-- 根据ID查询地址 -->
+    <select id="getAddressById" resultMap="AddressResultMap">
+        SELECT * FROM address WHERE id = #{id}
+    </select>
+
+    <!-- 新增地址 -->
+    <insert id="insertAddress">
+        INSERT INTO address (user_id, name, phone, address_detail, is_default)
+        VALUES (#{userId}, #{name}, #{phone}, #{addressDetail}, #{isDefault})
+    </insert>
+
+    <!-- 修改地址 -->
+    <update id="updateAddress">
+        UPDATE address
+        SET name = #{name}, phone = #{phone}, address_detail = #{addressDetail}, is_default = #{isDefault}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除地址 -->
+    <delete id="deleteAddress">
+        DELETE FROM address WHERE id = #{id}
+    </delete>
+
+</mapper>

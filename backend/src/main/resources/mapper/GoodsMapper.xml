@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.shopping3.mapper.GoodsMapper">
+    <!-- 猜你喜欢：随机查询6条【审核通过+已上架】的非二手商品 -->
+    <select id="selectGuessYouLike" resultType="com.example.shopping3.entity.Goods">
+        SELECT * FROM goods
+        WHERE category != '二手物品'
+          AND status = '审核通过'
+          AND sale_status = '已上架'
+        ORDER BY RAND()
+            LIMIT 6
+    </select>
+
+    <!-- 二手好物：查询6条【审核通过+已上架】的二手物品 -->
+    <select id="selectSecondHandGoods" resultType="com.example.shopping3.entity.Goods">
+        SELECT * FROM goods
+        WHERE category = '二手物品'
+          AND status = '审核通过'
+          AND sale_status = '已上架'
+        ORDER BY date DESC
+            LIMIT 6
+    </select>
+
+    <!-- 新增：按分类查询【审核通过+已上架】的商品 -->
+    <select id="selectGoodsByCategory" parameterType="String" resultType="com.example.shopping3.entity.Goods">
+        SELECT * FROM goods
+        WHERE category = #{category}
+          AND status = '审核通过'
+          AND sale_status = '已上架'
+        ORDER BY date DESC
+    </select>
+
+    <select id="selectById" parameterType="Integer" resultType="com.example.shopping3.entity.Goods">
+        SELECT * FROM goods WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultType="com.example.shopping3.entity.Goods">
+        SELECT * FROM goods
+    </select>
+</mapper>
