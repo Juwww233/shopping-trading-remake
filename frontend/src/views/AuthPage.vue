@@ -210,12 +210,28 @@ export default {
       }
 
       try {
-        // 直接调用导入的login方法，传递参数
+        // 直接调用导入的 login 方法，传递参数
         const res = await login(loginForm.value);
 
         if (res.code === 200 && res.data) {
-          localStorage.setItem("sessionId", res.data.sessionId);
-          localStorage.setItem("userInfo", JSON.stringify(res.data));
+          const user = res.data;
+
+          // 注意：这里假设后端返回的字段叫 'id'。如果后端返回的是 'userId'，请改为 user.userId
+          if (user.id) {
+            localStorage.setItem("userId", user.id);
+          } else if (user.userId) {
+            localStorage.setItem("userId", user.userId);
+          } else {
+            console.error("后端返回的用户数据中缺少 id 字段!", user);
+            alert("登录成功但数据异常，请联系管理员");
+            return;
+          }
+
+          localStorage.setItem("sessionId", user.sessionId);
+          localStorage.setItem("userInfo", JSON.stringify(user));
+
+          console.log("✅ 登录成功，已保存 userId:", user.id); // 加个日志确认
+
           router.push("/home");
           alert("登录成功！");
         } else {

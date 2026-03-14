@@ -4,10 +4,8 @@ import com.example.shopping3.common.Result;
 import com.example.shopping3.entity.Goods;
 import com.example.shopping3.service.GoodsService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 
 @RestController
@@ -62,43 +60,22 @@ public class GoodsController {
             return Result.error(errorMsg);
         }
     }
+
+    //商品详情接口
+    @GetMapping("/detail/{id}")
+    public Result<Goods> getGoodsDetail(@PathVariable Integer id) {
+        if (id == null) {
+            return Result.error("商品ID不能为空");
+        }
+        try {
+            Goods goods = goodsService.getGoodsDetail(id);
+            if (goods == null) {
+                return Result.error("商品不存在或已下架");
+            }
+            return Result.success(goods);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取商品详情失败：" + e.getMessage());
+        }
+    }
 }
-/*package com.example.shopping3.controller;
-
-import com.example.shopping3.common.Result;
-import com.example.shopping3.entity.Goods;
-import com.example.shopping3.service.GoodsService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
-
-@RestController
-@RequestMapping("/goods")
-public class GoodsController {
-    @Autowired
-    private GoodsService goodsService;
-
-    // 猜你喜欢
-    @GetMapping("/guessYouLike")
-    public Result<List<Goods>> getGuessYouLike() {
-        List<Goods> goodsList = goodsService.getGuessYouLike();
-        return Result.success(goodsList);
-    }
-
-    // 二手专区
-    @GetMapping("/secondHand")
-    public Result<List<Goods>> getSecondHandGoods() {
-        List<Goods> goodsList = goodsService.getSecondHandGoods();
-        return Result.success(goodsList);
-    }
-
-    // 新增：按分类查询商品
-    @GetMapping("/category")
-    public Result<List<Goods>> getGoodsByCategory(@RequestParam String category) {
-        List<Goods> goodsList = goodsService.getGoodsByCategory(category);
-        return Result.success(goodsList);
-    }
-}*/

@@ -10,4 +10,6 @@ public class User {
     private String name;         // 真实姓名
     private String phone;        // 手机号
     private String role;         // 角色：user/merchant/admin/seller
+    private String avatar;       // 头像
+    private String email;        // 邮箱
 }

@@ -8,4 +8,7 @@ public interface GoodsService {
     List<Goods> getSecondHandGoods();
     // 新增：按分类查询商品
     List<Goods> getGoodsByCategory(String category);
+
+    Goods getGoodsDetail(Integer id);
+
 }

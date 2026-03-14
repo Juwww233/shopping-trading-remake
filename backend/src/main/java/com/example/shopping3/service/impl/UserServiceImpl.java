@@ -12,28 +12,61 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserMapper userMapper;
 
-    // 登录逻辑（明文密码匹配）
+    // 【回退】登录逻辑：直接明文比对
     @Override
     public User login(String username, String password) {
-        // 根据用户名查询用户
         User user = userMapper.selectByUserName(username);
-        // 验证用户是否存在 + 密码是否匹配
-        if (user != null && user.getPassword().equals(password)) {
-            return user;
+        if (user != null) {
+            // 直接使用 equals 比对明文密码
+            if (user.getPassword().equals(password)) {
+                return user;
+            }
         }
         return null;
     }
 
-    // 注册逻辑
+    // 【回退】注册逻辑：直接存明文
     @Override
     public boolean register(User user) {
-        // 先检查用户名是否已存在
+        // 检查用户名是否存在
         User existUser = userMapper.selectByUserName(user.getUsername());
         if (existUser != null) {
-            return false;  // 用户名已存在
+            return false;
         }
-        // 新增用户
+
+        // ❌ 不再加密，直接存入用户输入的原始密码
+        // user.setPassword(encoder.encode(...));  <-- 删除这行逻辑
+
+        // 默认头像
+        if (user.getAvatar() == null) {
+            user.setAvatar("/images/default-avatar.png");
+        }
+
         int rows = userMapper.insertUser(user);
         return rows > 0;
     }
+
+    @Override
+    public User getById(Integer id) {
+        return userMapper.selectById(id);
+    }
+
+    @Override
+    public boolean updateById(User user) {
+        // 如果前端传了密码过来，这里也是直接存明文
+        // 注意：通常修改资料接口不应该包含密码字段，除非是专门的“修改密码”接口
+        return userMapper.updateUser(user) > 0;
+    }
+
+    /* 加密辅助方法
+    @Override
+    public boolean checkPassword(String rawPassword, String encodedPassword) {
+        return rawPassword.equals(encodedPassword);
+    }
+
+    @Override
+    public String encryptPassword(String rawPassword) {
+        return rawPassword; // 明文直接返回
+    }
+     */
 }

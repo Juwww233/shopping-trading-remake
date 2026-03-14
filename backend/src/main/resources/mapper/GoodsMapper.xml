@@ -36,6 +36,11 @@
         SELECT * FROM goods WHERE id = #{id}
     </select>
 
+    <!-- 增加浏览量 -->
+    <update id="incrementReadCount">
+        UPDATE goods SET read_count = read_count + 1 WHERE id = #{id}
+    </update>
+
     <select id="selectAll" resultType="com.example.shopping3.entity.Goods">
         SELECT * FROM goods
     </select>
