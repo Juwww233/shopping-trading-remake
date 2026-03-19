@@ -34,9 +34,6 @@ public class UserServiceImpl implements UserService {
             return false;
         }
 
-        // ❌ 不再加密，直接存入用户输入的原始密码
-        // user.setPassword(encoder.encode(...));  <-- 删除这行逻辑
-
         // 默认头像
         if (user.getAvatar() == null) {
             user.setAvatar("/images/default-avatar.png");

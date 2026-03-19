@@ -1,3 +1,5 @@
+//配置 Redis 怎么存数据、怎么序列化对象，格式工具
+//让 Redis 存 JSON，让存进去的对象能正常读出来，不报错、不乱码
 package com.example.shopping3.config;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;

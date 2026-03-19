@@ -28,6 +28,7 @@ public class UserController {
 
     // 1. 登录 (明文比对)
     @PostMapping("/login")
+    //手动取请求头 → 手动查 Redis → 手动判断
     public Result<Map<String, Object>> login(@RequestBody User loginUser) {
         User user = userService.login(loginUser.getUsername(), loginUser.getPassword());
         if (user != null) {
