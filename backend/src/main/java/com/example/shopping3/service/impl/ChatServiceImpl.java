@@ -68,6 +68,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public List<ChatMessage> getMessages(Long sessionId) {
+
         return messageMapper.selectMessagesBySessionId(sessionId);
     }
 }

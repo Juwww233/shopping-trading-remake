@@ -1,17 +1,18 @@
 package com.example.shopping3.controller;
 
+import com.example.shopping3.common.Result;
 import com.example.shopping3.entity.ChatMessage;
 import com.example.shopping3.entity.ChatSession;
+import com.example.shopping3.entity.User;
 import com.example.shopping3.service.ChatService;
 import com.example.shopping3.util.SessionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/chat")
+@RequestMapping("/chat")
 public class ChatController {
 
     @Autowired
@@ -21,37 +22,49 @@ public class ChatController {
     private SessionUtil sessionUtil;
 
     @PostMapping("/session")
-    public ResponseEntity<ChatSession> createSession(
-            @RequestParam Long sellerId,
-            @RequestHeader("X-Session-Id") String sessionId
+    public Result<ChatSession> createSession(
+            @RequestBody CreateSessionRequest request,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId
     ) {
-        Object sessionUser = sessionUtil.getSession(sessionId);
-        if (sessionUser == null) {
-            return ResponseEntity.status(401).build();
+        if (sessionId == null || sessionUtil.getSession(sessionId) == null) {
+            return Result.error("未登录");
         }
-
-        // 修正：添加 .longValue() 进行类型转换
-        Long buyerId = ((com.example.shopping3.entity.User) sessionUser).getId().longValue();
-
-        ChatSession session = chatService.createSession(buyerId, sellerId);
-        return ResponseEntity.ok(session);
+        User currentUser = (User) sessionUtil.getSession(sessionId);
+        ChatSession session = chatService.createSession(currentUser.getId().longValue(), request.getSellerId());
+        return Result.success(session);
     }
 
     @PostMapping("/send")
-    public ResponseEntity<ChatMessage> sendMessage(
-            @RequestParam Long sessionId,
-            @RequestParam String content,
-            @RequestHeader("X-Session-Id") String sessionIdHeader
+    public Result<ChatMessage> sendMessage(
+            @RequestBody SendMessageRequest request,
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId
     ) {
-        Object sessionUser = sessionUtil.getSession(sessionIdHeader);
-        if (sessionUser == null) {
-            return ResponseEntity.status(401).build();
+        if (sessionId == null || sessionUtil.getSession(sessionId) == null) {
+            return Result.error("未登录");
         }
+        User currentUser = (User) sessionUtil.getSession(sessionId);
+        ChatMessage message = chatService.sendMessage(request.getSessionId(), currentUser.getId().longValue(), request.getContent());
+        return Result.success(message);
+    }
 
-        // 修正：添加 .longValue() 进行类型转换
-        Long senderId = ((com.example.shopping3.entity.User) sessionUser).getId().longValue();
+    @GetMapping("/messages")
+    public Result<List<ChatMessage>> getMessages(@RequestParam Long sessionId) {
+        List<ChatMessage> messages = chatService.getMessages(sessionId);
+        return Result.success(messages);
+    }
 
-        ChatMessage message = chatService.sendMessage(sessionId, senderId, content);
-        return ResponseEntity.ok(message);
+    public static class CreateSessionRequest {
+        private Long sellerId;
+        public Long getSellerId() { return sellerId; }
+        public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
+    }
+
+    public static class SendMessageRequest {
+        private Long sessionId;
+        private String content;
+        public Long getSessionId() { return sessionId; }
+        public void setSessionId(Long sessionId) { this.sessionId = sessionId; }
+        public String getContent() { return content; }
+        public void setContent(String content) { this.content = content; }
     }
 }
