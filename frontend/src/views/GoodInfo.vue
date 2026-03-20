@@ -125,14 +125,13 @@ const goBack = () => {
   router.back();
 };
 
-// 联系卖家 (模拟 WebSocket 或跳转聊天页)
 const handleContact = () => {
   if (!goods.value.userId) {
     alert('卖家信息缺失');
     return;
   }
-  // TODO: 跳转到聊天页面 /chat?targetId=xxx
-  alert(`正在发起与卖家 (ID: ${goods.value.userId}) 的会话... (需实现聊天模块)`);
+  // 跳转到聊天页面，携带卖家ID
+  router.push(`/chat?targetId=${goods.value.userId}`);
 };
 
 // 立即购买

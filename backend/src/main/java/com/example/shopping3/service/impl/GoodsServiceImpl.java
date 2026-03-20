@@ -129,7 +129,6 @@ public class GoodsServiceImpl implements GoodsService {
             // 注意：如果更新了数据库字段，严格来说应该删除或更新该商品的缓存，
             // 但为了性能，通常允许短时间内数据不一致，等待缓存过期自动刷新。
         }
-
         return goods;
     }
 

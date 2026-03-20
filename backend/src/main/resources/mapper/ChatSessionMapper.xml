@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.shopping3.mapper.ChatSessionMapper">
+
+    <select id="selectByBuyerAndSeller" resultType="com.example.shopping3.entity.ChatSession">
+        SELECT * FROM chat_session
+        WHERE buyer_id = #{buyerId} AND seller_id = #{sellerId}
+    </select>
+
+    <insert id="insertSession" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO chat_session (buyer_id, seller_id)
+        VALUES (#{buyerId}, #{sellerId})
+    </insert>
+
+    <!-- 新增：通过ID查询会话 -->
+    <select id="selectById" resultType="com.example.shopping3.entity.ChatSession">
+        SELECT * FROM chat_session WHERE id = #{id}
+    </select>
+</mapper>

@@ -6,6 +6,7 @@ import Home from '@/views/Home.vue';
 import Category from '@/views/Category.vue';
 import GoodInfo from '@/views/GoodInfo.vue';
 import UserProfile from '@/views/UserProfile.vue';
+import ChatView from "@/views/ChatView.vue";
 
 const routes = [
     {
@@ -37,7 +38,7 @@ const routes = [
         meta: { requiresAuth: true }
     },
     {
-        path: '/profile',           // ✅ 已移除 :id 参数
+        path: '/profile',
         name: 'UserProfile',
         component: UserProfile,
         meta: { requiresAuth: true }
@@ -45,6 +46,11 @@ const routes = [
     {
         path: '/:pathMatch(.*)*',
         redirect: '/auth'
+    },
+    {
+        path: '/chat',
+        name: 'Chat',
+        component: () => import('../views/ChatView.vue')
     }
 ];
 
