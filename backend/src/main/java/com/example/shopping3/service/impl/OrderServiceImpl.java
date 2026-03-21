@@ -9,6 +9,7 @@ import com.example.shopping3.util.StockRedisUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;  // ✅ 添加导入
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,9 +32,12 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private OrderMapper orderMapper;
 
-    // 注入 RedisTemplate 用于删除商品详情缓存 (解决数据一致性问题)
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    // ✅ 添加 SimpMessagingTemplate 用于推送消息
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -42,8 +46,7 @@ public class OrderServiceImpl implements OrderService {
         Map<String, Object> result = new HashMap<>();
         Integer goodsId = goods.getId();
 
-        // 1. 查询 Redis 库存 (预扣减模式)
-        // 注意：这里依赖启动时的预热，或者未来 addGoods 时的同步
+        // 1. 查询 Redis 库存
         Integer stock = stockRedisUtil.getStock(goodsId);
 
         if (stock == null || stock < buyCount) {
@@ -52,7 +55,7 @@ public class OrderServiceImpl implements OrderService {
             return result;
         }
 
-        // 2. 原子扣减 Redis 库存 (使用 Lua 脚本，需在 StockRedisUtil 中已实现)
+        // 2. 原子扣减 Redis 库存
         boolean decreaseSuccess = stockRedisUtil.decreaseStock(goodsId, buyCount);
         if (!decreaseSuccess) {
             result.put("code", 500);
@@ -79,18 +82,14 @@ public class OrderServiceImpl implements OrderService {
             order.setUserId(userId);
             order.setPayNo("");
             order.setPayTime("");
-            order.setGoodsId(goodsId); // 【关键】设置 goodsId，用于 Kafka 消费者回滚
+            order.setGoodsId(goodsId);
 
-            // 4. 发送 Kafka 消息 (异步落库)
+            // 4. 发送 Kafka 消息
             kafkaTemplate.send(KafkaConfig.ORDER_TOPIC, orderNo, order);
 
             // 5. 删除商品详情缓存
-            // Key 必须与 GoodsServiceImpl 中定义的 CACHE_KEY_DETAIL 一致
-            // 假设 GoodsServiceImpl 中定义的是 "goods:detail:" + id
             String cacheKey = "goods:detail:" + goodsId;
             redisTemplate.delete(cacheKey);
-
-            // 如果有列表缓存，建议也删除，防止列表页显示库存不准
             redisTemplate.delete("goods:guessLike");
             redisTemplate.delete("goods:secondHand");
 
@@ -102,7 +101,6 @@ public class OrderServiceImpl implements OrderService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            // 如果发送 Kafka 失败，需要回滚 Redis 库存
             stockRedisUtil.increaseStock(goodsId, buyCount);
             result.put("code", 500);
             result.put("msg", "系统繁忙，订单创建失败");
@@ -119,6 +117,16 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus("已完成");
             orderMapper.insertOrder(order);
 
+            // ✅ 推送消息到前端 - 关键代码！
+            Map<String, Object> pushData = new HashMap<>();
+            pushData.put("orderNo", order.getOrderNo());
+            pushData.put("status", order.getStatus());
+            pushData.put("msg", "订单处理完成");
+
+            // 发送到 /order/{orderNo} 主题
+            messagingTemplate.convertAndSend("/order/" + order.getOrderNo(), pushData);
+            System.out.println("已推送订单结果：" + order.getOrderNo());
+
         } catch (Exception e) {
             e.printStackTrace();
             // 异常回滚：库存加回去
@@ -126,6 +134,15 @@ public class OrderServiceImpl implements OrderService {
                 stockRedisUtil.increaseStock(order.getGoodsId(), order.getCount());
             }
             order.setStatus("失败");
+
+            // ✅ 推送失败消息到前端
+            Map<String, Object> pushData = new HashMap<>();
+            pushData.put("orderNo", order.getOrderNo());
+            pushData.put("status", "失败");
+            pushData.put("msg", "订单处理失败，库存已回滚");
+
+            messagingTemplate.convertAndSend("/order/" + order.getOrderNo(), pushData);
+            System.out.println("已推送订单失败结果：" + order.getOrderNo());
         }
     }
 
