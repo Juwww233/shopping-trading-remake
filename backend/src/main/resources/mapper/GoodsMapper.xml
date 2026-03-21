@@ -41,7 +41,8 @@
         UPDATE goods SET read_count = read_count + 1 WHERE id = #{id}
     </update>
 
-    <select id="selectAll" resultType="com.example.shopping3.entity.Goods">
+    <!-- 查询所有商品 -->
+    <select id="selectAllGoods" resultType="com.example.shopping3.entity.Goods">
         SELECT * FROM goods
     </select>
 </mapper>

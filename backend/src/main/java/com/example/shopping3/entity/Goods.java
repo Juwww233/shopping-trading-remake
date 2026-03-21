@@ -9,6 +9,7 @@ public class Goods {
     private Integer id;
     private String name;
     private BigDecimal price;
+    private Integer stock;
     private String content;
     private String address;
     private String img;
