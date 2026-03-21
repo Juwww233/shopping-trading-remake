@@ -9,14 +9,22 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/chat"); // 前端订阅前缀
+        // 启用简单 Broker，支持 /chat 和 /order 前缀
+        config.enableSimpleBroker("/chat", "/order");
+        // 设置应用目的地前缀
         config.setApplicationDestinationPrefixes("/app");
+        // 设置用户目的地前缀（可选，用于点对点消息）
+        config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws-chat").setAllowedOriginPatterns("*");
+        // 添加 WebSocket 端点，允许跨域
+        registry.addEndpoint("/ws-chat")
+                .setAllowedOriginPatterns("*")
+                .withSockJS();  // 保留 SockJS 作为降级（不影响前端原生 WebSocket）
     }
 }

@@ -54,7 +54,6 @@
           </div>
         </div>
 
-        <!-- 二手商品特有：成色展示 -->
         <div v-if="goods.category === '二手物品' && goods.content" class="condition-tag">
           成色提示：{{ goods.content.match(/\d+成新/)?.[0] || '详见描述' }}
         </div>
@@ -64,13 +63,48 @@
           <p class="desc-text">{{ goods.content || '暂无详细描述' }}</p>
         </div>
 
+        <!-- 订单状态提示 -->
+        <div v-if="orderMsg" class="order-tip" :class="orderStatus">
+          {{ orderMsg }}
+        </div>
+
         <!-- 操作栏 -->
         <div class="action-bar">
           <button class="btn-contact" @click="handleContact">
             💬 联系卖家
           </button>
-          <button class="btn-buy" @click="handleBuy">
-            🛒 立即购买
+          <button class="btn-buy" @click="handleBuy" :disabled="buyLoading">
+            <span v-if="buyLoading">处理中...</span>
+            <span v-else>🛒 立即购买</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 收货信息弹窗 -->
+    <div v-if="showBuyModal" class="modal-mask">
+      <div class="modal-content">
+        <h3>填写收货信息</h3>
+        <div class="form-item">
+          <label>购买数量</label>
+          <input v-model.number="buyCount" type="number" min="1">
+        </div>
+        <div class="form-item">
+          <label>收货人</label>
+          <input v-model="userName" type="text" placeholder="请输入姓名">
+        </div>
+        <div class="form-item">
+          <label>联系电话</label>
+          <input v-model="phone" type="text" placeholder="请输入手机号">
+        </div>
+        <div class="form-item">
+          <label>收货地址</label>
+          <input v-model="address" type="text" placeholder="请输入详细地址">
+        </div>
+        <div class="modal-btns">
+          <button @click="showBuyModal=false">取消</button>
+          <button @click="submitOrder" :disabled="submitLoading">
+            {{ submitLoading ? '提交中...' : '确认购买' }}
           </button>
         </div>
       </div>
@@ -79,9 +113,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { getGoodsDetail } from '@/api/goods';
+import { createOrder } from '@/api/order';
+import { Stomp } from '@stomp/stompjs';
+// ❌ 删除 SockJS 导入
 
 const route = useRoute();
 const router = useRouter();
@@ -89,9 +126,21 @@ const router = useRouter();
 const goods = ref(null);
 const loading = ref(true);
 const error = ref(null);
-
-// 获取商品ID
 const goodsId = route.params.id;
+
+// 购买相关
+const showBuyModal = ref(false);
+const buyCount = ref(1);
+const userName = ref('');
+const phone = ref('');
+const address = ref('');
+const buyLoading = ref(false);
+const submitLoading = ref(false);
+const orderMsg = ref('');
+const orderStatus = ref('');
+
+// STOMP 实例
+let stompClient = null;
 
 // 格式化日期
 const formatDate = (dateStr) => {
@@ -100,7 +149,7 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-// 获取数据
+// 获取商品数据
 const fetchData = async () => {
   loading.value = true;
   error.value = null;
@@ -108,7 +157,6 @@ const fetchData = async () => {
     const res = await getGoodsDetail(goodsId);
     if (res.code === 200) {
       goods.value = res.data;
-      // 可选：这里可以触发后端浏览量+1的逻辑，或者前端直接展示
     } else {
       error.value = res.msg || '获取商品详情失败';
     }
@@ -120,25 +168,107 @@ const fetchData = async () => {
   }
 };
 
-// 返回上一页
+// 返回
 const goBack = () => {
   router.back();
 };
 
+// 联系卖家
 const handleContact = () => {
   if (!goods.value.userId) {
     alert('卖家信息缺失');
     return;
   }
-  // 跳转到聊天页面，携带卖家ID
   router.push(`/chat?targetId=${goods.value.userId}`);
 };
 
-// 立即购买
+// 打开购买弹窗
 const handleBuy = () => {
-  // TODO: 创建订单逻辑
-  alert(`正在生成订单：${goods.value.name} - ¥${goods.value.price}`);
+  showBuyModal.value = true;
 };
+
+// 提交订单
+const submitOrder = async () => {
+  if (!userName.value || !phone.value || !address.value) {
+    alert('请填写完整收货信息');
+    return;
+  }
+  if (buyCount.value < 1) {
+    alert('购买数量不能小于 1');
+    return;
+  }
+
+  submitLoading.value = true;
+  orderMsg.value = '';
+
+  try {
+    const res = await createOrder({
+      goodsId: goodsId,
+      buyCount: buyCount.value,
+      address: address.value,
+      phone: phone.value,
+      userName: userName.value
+    });
+
+    if (res.code === 200) {
+      const { orderNo, msg } = res.data;
+      orderMsg.value = msg;
+      orderStatus.value = 'success';
+      showBuyModal.value = false;
+      initStompListen(orderNo);
+    } else {
+      orderMsg.value = res.msg;
+      orderStatus.value = 'error';
+    }
+  } catch (err) {
+    console.error(err);
+    orderMsg.value = '订单创建失败，请重试';
+    orderStatus.value = 'error';
+  } finally {
+    submitLoading.value = false;
+  }
+};
+
+// STOMP 监听订单处理结果
+const initStompListen = (orderNo) => {
+  // ✅ 使用原生 WebSocket
+  stompClient = Stomp.client('ws://localhost:8080/ws-chat');
+
+  stompClient.connect({}, () => {
+    console.log('STOMP 连接成功');
+    stompClient.subscribe(`/order/${orderNo}`, (message) => {
+      const result = JSON.parse(message.body);
+      console.log('收到订单推送:', result);
+
+      if (result.status === '已完成' || result.status === 'SUCCESS') {
+        orderMsg.value = `✅ 订单${result.orderNo}处理完成！`;
+        orderStatus.value = 'success';
+      } else {
+        orderMsg.value = `❌ 订单${result.orderNo}处理失败！`;
+        orderStatus.value = 'error';
+      }
+
+      stompClient.disconnect();
+      setTimeout(() => router.push('/order'), 3000);
+    });
+  }, (error) => {
+    console.error('STOMP 连接失败:', error);
+    orderMsg.value = '订单监听连接失败，可前往订单页查看状态';
+    orderStatus.value = 'error';
+  });
+
+  stompClient.onWebSocketError = () => {
+    console.error('WebSocket 错误');
+    orderMsg.value = '订单监听异常，可前往订单页查看状态';
+  };
+};
+
+// 页面销毁断开连接
+onUnmounted(() => {
+  if (stompClient) {
+    stompClient.disconnect();
+  }
+});
 
 onMounted(() => {
   fetchData();
@@ -290,10 +420,26 @@ onMounted(() => {
 .desc-text {
   color: #4e5969;
   line-height: 1.6;
-  white-space: pre-wrap; /* 保留换行符 */
+  white-space: pre-wrap;
   background: #f9f9f9;
   padding: 15px;
   border-radius: 6px;
+}
+
+/* 订单提示 */
+.order-tip {
+  padding: 12px 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-weight: 500;
+}
+.order-tip.success {
+  background: #e6ffed;
+  color: #00b42a;
+}
+.order-tip.error {
+  background: #fff2f0;
+  color: #f53f3f;
 }
 
 .action-bar {
@@ -325,9 +471,76 @@ onMounted(() => {
   background-color: #1890ff;
   color: #fff;
 }
+.btn-buy:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .btn-contact:hover, .btn-buy:hover {
   opacity: 0.9;
+}
+
+/* 弹窗样式 */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.modal-content {
+  background: #fff;
+  width: 90%;
+  max-width: 500px;
+  padding: 25px;
+  border-radius: 8px;
+}
+.modal-content h3 {
+  margin-bottom: 20px;
+  text-align: center;
+}
+.form-item {
+  margin-bottom: 15px;
+}
+.form-item label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+.form-item input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.modal-btns {
+  display: flex;
+  gap: 15px;
+  margin-top: 25px;
+}
+.modal-btns button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.modal-btns button:first-child {
+  border: 1px solid #ddd;
+  background: #fff;
+}
+.modal-btns button:last-child {
+  background: #1890ff;
+  color: #fff;
+  border: none;
+}
+.modal-btns button:disabled {
+  opacity: 0.6;
 }
 
 @media (max-width: 768px) {

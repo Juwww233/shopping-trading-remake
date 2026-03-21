@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.shopping3.mapper.OrderMapper">
+    <resultMap id="OrderResultMap" type="com.example.shopping3.entity.Order">
+        <id column="id" property="id"/>
+        <result column="goods_name" property="goodsName"/>
+        <result column="goods_img" property="goodsImg"/>
+        <result column="total" property="total"/>
+        <result column="time" property="time"/>
+        <result column="pay_no" property="payNo"/>
+        <result column="pay_time" property="payTime"/>
+        <result column="address" property="address"/>
+        <result column="phone" property="phone"/>
+        <result column="user_name" property="userName"/>
+        <result column="status" property="status"/>
+        <result column="sale_id" property="saleId"/>
+        <result column="goods_price" property="goodsPrice"/>
+        <result column="count" property="count"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="user_id" property="userId"/>
+    </resultMap>
+
+    <insert id="insertOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO orders (
+            goods_name, goods_img, total, time, pay_no, pay_time,
+            address, phone, user_name, status, sale_id, goods_price,
+            count, order_no, user_id
+        ) VALUES (
+                     #{goodsName}, #{goodsImg}, #{total}, #{time}, #{payNo}, #{payTime},
+                     #{address}, #{phone}, #{userName}, #{status}, #{saleId}, #{goodsPrice},
+                     #{count}, #{orderNo}, #{userId}
+                 )
+    </insert>
+
+    <select id="selectByOrderNo" resultMap="OrderResultMap">
+        SELECT * FROM orders WHERE order_no = #{orderNo}
+    </select>
+
+    <!-- 【新增】根据用户 ID 查询订单列表 -->
+    <select id="selectByUserId" resultMap="OrderResultMap">
+        SELECT * FROM orders WHERE user_id = #{userId} ORDER BY time DESC
+    </select>
+</mapper>
