@@ -22,9 +22,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // 添加 WebSocket 端点，允许跨域
-        registry.addEndpoint("/ws-chat")
-                .setAllowedOriginPatterns("*")
-                .withSockJS();  // 保留 SockJS 作为降级（不影响前端原生 WebSocket）
-    }
+    // 添加 WebSocket 端点，允许跨域，同时支持原生WebSocket和SockJS
+    registry.addEndpoint("/ws-chat")
+            .setAllowedOriginPatterns("*");
+    // 单独添加SockJS支持作为降级方案
+    registry.addEndpoint("/ws-chat")
+            .setAllowedOriginPatterns("*")
+            .withSockJS();
+}
 }

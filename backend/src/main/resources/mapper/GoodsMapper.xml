@@ -45,4 +45,9 @@
     <select id="selectAllGoods" resultType="com.example.shopping3.entity.Goods">
         SELECT * FROM goods
     </select>
+
+    <!-- 更新商品库存 -->
+    <update id="updateStock" parameterType="map">
+        UPDATE goods SET stock = stock - #{count} WHERE id = #{goodsId}
+    </update>
 </mapper>

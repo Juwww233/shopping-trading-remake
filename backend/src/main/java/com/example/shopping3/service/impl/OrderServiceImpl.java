@@ -6,6 +6,7 @@ import com.example.shopping3.mapper.OrderMapper;
 import com.example.shopping3.service.OrderService;
 import com.example.shopping3.config.KafkaConfig;
 import com.example.shopping3.util.StockRedisUtil;
+import com.example.shopping3.mapper.GoodsMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -38,6 +39,9 @@ public class OrderServiceImpl implements OrderService {
     // ✅ 添加 SimpMessagingTemplate 用于推送消息
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    private GoodsMapper goodsMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -109,6 +113,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void handleOrderMessage(Order order) {
         try {
             // 模拟业务处理耗时
@@ -117,7 +122,13 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus("已完成");
             orderMapper.insertOrder(order);
 
-            // ✅ 推送消息到前端 - 关键代码！
+            // 更新数据库库存
+            if (order.getGoodsId() != null && order.getCount() != null) {
+                goodsMapper.updateStock(order.getGoodsId(), order.getCount());
+                System.out.println("已更新数据库库存：商品ID=" + order.getGoodsId() + "，扣减数量=" + order.getCount());
+            }
+
+            // 推送消息到前端
             Map<String, Object> pushData = new HashMap<>();
             pushData.put("orderNo", order.getOrderNo());
             pushData.put("status", order.getStatus());
@@ -135,7 +146,7 @@ public class OrderServiceImpl implements OrderService {
             }
             order.setStatus("失败");
 
-            // ✅ 推送失败消息到前端
+            // 推送失败消息到前端
             Map<String, Object> pushData = new HashMap<>();
             pushData.put("orderNo", order.getOrderNo());
             pushData.put("status", "失败");

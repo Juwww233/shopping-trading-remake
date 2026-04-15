@@ -8,8 +8,6 @@
 
       <!-- 中间导航 -->
       <nav class="main-nav">
-        <router-link to="/home" class="nav-item">首页</router-link>
-        <router-link to="/goods" class="nav-item">全部商品</router-link>
         <router-link to="/publish" class="nav-item" v-if="currentUser && currentUser.role === 'merchant'">
           发布商品
         </router-link>
@@ -40,6 +38,9 @@
               <div v-if="isDropdownOpen" class="dropdown-menu">
                 <div class="menu-item" @click="goToProfile">
                   <span class="icon">👤</span> 个人中心
+                </div>
+                <div class="menu-item" @click="goToOrder">
+                  <span class="icon">📋</span> 我的订单
                 </div>
                 <div class="menu-divider"></div>
                 <div class="menu-item logout" @click="handleLogout">
@@ -100,6 +101,20 @@ const goToProfile = () => {
   console.log('✅ 跳转个人中心，userId:', uid);
   isDropdownOpen.value = false;
   router.push('/profile');  // ✅ 现在可以不带参数了
+}
+
+const goToOrder = () => {
+  const uid = localStorage.getItem('userId');
+
+  if (!uid) {
+    console.warn('⚠️ 未找到 userId，跳转登录页');
+    router.push('/auth');
+    return;
+  }
+
+  console.log('✅ 跳转我的订单');
+  isDropdownOpen.value = false;
+  router.push('/order');
 }
 
 const toggleDropdown = (e) => {

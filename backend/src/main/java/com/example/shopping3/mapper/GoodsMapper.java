@@ -15,4 +15,7 @@ public interface GoodsMapper {
     Goods selectById(Integer id);
 
     List<Goods> selectAllGoods();
+
+    // 更新商品库存
+    void updateStock(Integer goodsId, Integer count);
 }

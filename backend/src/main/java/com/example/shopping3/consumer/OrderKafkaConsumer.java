@@ -18,9 +18,7 @@ public class OrderKafkaConsumer {
 
     @KafkaListener(topics = KafkaConfig.ORDER_TOPIC, groupId = "shopping_order_group")
     public void consumeOrderMessage(Order order) {
-        // 1. 处理订单（落库）
+        // 处理订单（落库），handleOrderMessage方法中已经包含了消息推送
         orderService.handleOrderMessage(order);
-        // 2. 推送订单结果给前端
-        stompOrderUtil.sendOrderResult(order.getOrderNo(), order.getStatus());
     }
 }

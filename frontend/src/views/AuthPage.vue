@@ -165,7 +165,7 @@
 <script>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-// 核心修正：直接导入登录/注册方法，避免多层api嵌套错误
+
 import { login, register } from '@/api/user';
 
 export default {
@@ -202,7 +202,7 @@ export default {
       }
     };
 
-    // 登录方法（修正接口调用）
+    // 登录方法
     const handleLogin = async () => {
       if (!loginForm.value.username || !loginForm.value.password) {
         alert("请输入用户名和密码！");
@@ -210,13 +210,12 @@ export default {
       }
 
       try {
-        // 直接调用导入的 login 方法，传递参数
+        // 调用导入的 login 方法，传递参数
         const res = await login(loginForm.value);
 
         if (res.code === 200 && res.data) {
           const user = res.data;
 
-          // 注意：这里假设后端返回的字段叫 'id'。如果后端返回的是 'userId'，请改为 user.userId
           if (user.id) {
             localStorage.setItem("userId", user.id);
           } else if (user.userId) {
