@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.shopping3.mapper.NoticeMapper">
+
+    <select id="selectAll" resultType="com.example.shopping3.entity.Notice">
+        SELECT * FROM notice ORDER BY time DESC
+    </select>
+
+    <select id="selectById" resultType="com.example.shopping3.entity.Notice">
+        SELECT * FROM notice WHERE id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO notice (title, content, time, user) VALUES (#{title}, #{content}, #{time}, #{user})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM notice WHERE id = #{id}
+    </delete>
+
+</mapper>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.shopping3.mapper.CategoryMapper">
+
+    <resultMap id="CategoryResultMap" type="Category">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="goods_id" property="goodsId"/>
+        <result column="user_id" property="userId"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="CategoryResultMap">
+        SELECT * FROM category ORDER BY id
+    </select>
+
+    <select id="selectById" resultMap="CategoryResultMap">
+        SELECT * FROM category WHERE id = #{id}
+    </select>
+
+    <select id="selectByName" resultMap="CategoryResultMap">
+        SELECT * FROM category WHERE name = #{name}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO category (name) VALUES (#{name})
+    </insert>
+
+    <update id="update">
+        UPDATE category SET name = #{name} WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM category WHERE id = #{id}
+    </delete>
+
+</mapper>
