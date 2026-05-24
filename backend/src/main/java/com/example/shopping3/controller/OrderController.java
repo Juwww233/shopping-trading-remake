@@ -6,6 +6,7 @@ import com.example.shopping3.entity.User;
 import com.example.shopping3.entity.Order;
 import com.example.shopping3.service.GoodsService;
 import com.example.shopping3.service.OrderService;
+import com.example.shopping3.service.impl.AdminServiceImpl;
 import com.example.shopping3.util.SessionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +26,9 @@ public class OrderController {
 
     @Autowired
     private SessionUtil sessionUtil;
+
+    @Autowired
+    private AdminServiceImpl adminService;
 
     @PostMapping("/create")
     public Result<Map<String, Object>> createOrder(
@@ -75,5 +79,65 @@ public class OrderController {
         }
         List<Order> orderList = orderService.getOrderListByUserId(user.getId());
         return Result.success(orderList);
+    }
+
+    // 支付订单
+    @PostMapping("/{orderNo}/pay")
+    public Result<Map<String, Object>> payOrder(@PathVariable String orderNo,
+                                                 @RequestHeader("X-Session-Id") String sessionId) {
+        User user = (User) sessionUtil.getSession(sessionId);
+        if (user == null) {
+            return Result.error("未登录");
+        }
+        Map<String, Object> result = orderService.payOrder(orderNo);
+        if ((Integer) result.get("code") == 200) {
+            return Result.success(result);
+        }
+        return Result.error(result.get("msg").toString());
+    }
+
+    // 取消订单
+    @PostMapping("/{orderNo}/cancel")
+    public Result<Map<String, Object>> cancelOrder(@PathVariable String orderNo,
+                                                    @RequestHeader("X-Session-Id") String sessionId) {
+        User user = (User) sessionUtil.getSession(sessionId);
+        if (user == null) {
+            return Result.error("未登录");
+        }
+        Map<String, Object> result = orderService.cancelOrder(orderNo, user.getId());
+        if ((Integer) result.get("code") == 200) {
+            return Result.success(result);
+        }
+        return Result.error(result.get("msg").toString());
+    }
+
+    // 卖家发货
+    @PostMapping("/{orderNo}/ship")
+    public Result<Map<String, Object>> shipOrder(@PathVariable String orderNo,
+                                                  @RequestHeader("X-Session-Id") String sessionId) {
+        User user = (User) sessionUtil.getSession(sessionId);
+        if (user == null) {
+            return Result.error("未登录");
+        }
+        Map<String, Object> result = orderService.shipOrder(orderNo);
+        if ((Integer) result.get("code") == 200) {
+            return Result.success(result);
+        }
+        return Result.error(result.get("msg").toString());
+    }
+
+    // 确认收货
+    @PostMapping("/{orderNo}/receive")
+    public Result<Map<String, Object>> confirmReceive(@PathVariable String orderNo,
+                                                       @RequestHeader("X-Session-Id") String sessionId) {
+        User user = (User) sessionUtil.getSession(sessionId);
+        if (user == null) {
+            return Result.error("未登录");
+        }
+        Map<String, Object> result = orderService.confirmReceive(orderNo);
+        if ((Integer) result.get("code") == 200) {
+            return Result.success(result);
+        }
+        return Result.error(result.get("msg").toString());
     }
 }

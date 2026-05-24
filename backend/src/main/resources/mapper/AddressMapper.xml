@@ -12,8 +12,7 @@
         <result column="user_id" property="userId"/>
         <result column="name" property="name"/>
         <result column="phone" property="phone"/>
-        <result column="address_detail" property="addressDetail"/>
-        <result column="is_default" property="isDefault"/>
+        <result column="address" property="address"/>
     </resultMap>
 
     <!-- 查询用户所有地址 -->
@@ -28,14 +27,14 @@
 
     <!-- 新增地址 -->
     <insert id="insertAddress">
-        INSERT INTO address (user_id, name, phone, address_detail, is_default)
-        VALUES (#{userId}, #{name}, #{phone}, #{addressDetail}, #{isDefault})
+        INSERT INTO address (user_id, name, phone, address)
+        VALUES (#{userId}, #{name}, #{phone}, #{address})
     </insert>
 
     <!-- 修改地址 -->
     <update id="updateAddress">
         UPDATE address
-        SET name = #{name}, phone = #{phone}, address_detail = #{addressDetail}, is_default = #{isDefault}
+        SET name = #{name}, phone = #{phone}, address = #{address}
         WHERE id = #{id}
     </update>
 

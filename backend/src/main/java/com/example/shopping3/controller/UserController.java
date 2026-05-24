@@ -1,5 +1,6 @@
 package com.example.shopping3.controller;
 
+import com.example.shopping3.annotation.NoAuth;
 import com.example.shopping3.common.Result;
 import com.example.shopping3.entity.User;
 import com.example.shopping3.service.UserService;
@@ -27,6 +28,7 @@ public class UserController {
     private SessionUtil sessionUtil;
 
     // 1. 登录 (明文比对)
+    @NoAuth
     @PostMapping("/login")
     //手动取请求头 → 手动查 Redis → 手动判断
     public Result<Map<String, Object>> login(@RequestBody User loginUser) {
@@ -47,6 +49,7 @@ public class UserController {
     }
 
     // 2. 注册 (明文存储)
+    @NoAuth
     @PostMapping("/register")
     public Result<String> register(@RequestBody User registerUser) {
         if (userService.register(registerUser)) {

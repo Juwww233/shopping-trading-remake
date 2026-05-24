@@ -3,6 +3,8 @@ package com.example.shopping3.service.impl;
 import com.example.shopping3.entity.Goods;
 import com.example.shopping3.mapper.GoodsMapper;
 import com.example.shopping3.service.GoodsService;
+import com.example.shopping3.util.RedisLockUtil;
+import com.example.shopping3.util.StockRedisUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,7 +12,10 @@ import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -24,6 +29,12 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    private RedisLockUtil redisLockUtil;
+
+    @Autowired
+    private StockRedisUtil stockRedisUtil;
 
     // 原有列表缓存 Key
     private static final String CACHE_KEY_GUESS_LIKE = "goods:guessLike";
@@ -108,7 +119,7 @@ public class GoodsServiceImpl implements GoodsService {
 
         String cacheKey = CACHE_KEY_DETAIL + id;
 
-        // 1. 先尝试查 Redis 缓存 (单个对象)
+        // 1. 先尝试查 Redis 缓存
         Goods goods = getSingleFromCache(cacheKey);
 
         if (goods != null) {
@@ -116,20 +127,112 @@ public class GoodsServiceImpl implements GoodsService {
             return goods;
         }
 
-        // 2. 缓存没有或 Redis 不可用，查数据库
-        logger.info("缓存未命中，查询数据库详情：{}", cacheKey);
-        goods = goodsMapper.selectById(id);
+        // 2. 缓存未命中，使用分布式锁防止缓存击穿
+        String lockKey = "lock:goods:detail:" + id;
+        String lockValue = UUID.randomUUID().toString();
+        boolean locked = false;
 
-        // 3. 写入 Redis 缓存（如果数据存在且 Redis 可用）
-        if (goods != null) {
-            saveSingleToCache(cacheKey, goods);
+        try {
+            // 尝试获取分布式锁，等待最多 3 秒，锁过期时间 10 秒
+            locked = redisLockUtil.tryLock(lockKey, lockValue, 10, TimeUnit.SECONDS);
 
-            // 可选：在此处异步调用 mapper 增加浏览量 read_count
-            // goodsMapper.incrementReadCount(id);
-            // 注意：如果更新了数据库字段，严格来说应该删除或更新该商品的缓存，
-            // 但为了性能，通常允许短时间内数据不一致，等待缓存过期自动刷新。
+            if (locked) {
+                // 获取到锁，查询数据库并重建缓存
+                logger.info("获取到分布式锁，查询数据库详情：{}", cacheKey);
+                goods = goodsMapper.selectById(id);
+
+                if (goods != null) {
+                    saveSingleToCache(cacheKey, goods);
+                }
+            } else {
+                // 未获取到锁，短暂等待后重试读取缓存（其他线程正在重建缓存）
+                logger.info("未获取到锁，等待缓存重建：{}", cacheKey);
+                Thread.sleep(200);
+                goods = getSingleFromCache(cacheKey);
+
+                // 如果重试后缓存仍为空，降级直接查数据库
+                if (goods == null) {
+                    logger.warn("等待后缓存仍为空，降级查询数据库：{}", cacheKey);
+                    goods = goodsMapper.selectById(id);
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("等待缓存重建时被中断", e);
+            goods = goodsMapper.selectById(id);
+        } finally {
+            // 释放锁
+            if (locked) {
+                redisLockUtil.unlock(lockKey, lockValue);
+            }
         }
+
         return goods;
+    }
+
+    @Override
+    public void incrementReadCount(Integer id) {
+        if (id == null) return;
+        try {
+            goodsMapper.incrementReadCount(id);
+            redisTemplate.delete(CACHE_KEY_DETAIL + id);
+        } catch (Exception e) {
+            logger.warn("阅读量更新失败，不影响主流程。id: {}", id, e);
+        }
+    }
+
+    @Override
+    public Goods publishGoods(Goods goods) {
+        goods.setDate(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()));
+        goods.setStatus("待审核");
+        goods.setSaleStatus("未上架");
+        goods.setReadCount(0);
+        goodsMapper.insert(goods);
+        stockRedisUtil.setStock(goods.getId(), goods.getStock());
+        invalidateListCaches();
+        return goods;
+    }
+
+    @Override
+    public Goods updateGoods(Goods goods) {
+        goodsMapper.update(goods);
+        redisTemplate.delete(CACHE_KEY_DETAIL + goods.getId());
+        stockRedisUtil.setStock(goods.getId(), goods.getStock());
+        invalidateListCaches();
+        return goods;
+    }
+
+    @Override
+    public void updateGoodsStatus(Integer id, String status) {
+        goodsMapper.updateStatus(id, status);
+        redisTemplate.delete(CACHE_KEY_DETAIL + id);
+        invalidateListCaches();
+    }
+
+    @Override
+    public void updateGoodsSaleStatus(Integer id, String saleStatus) {
+        goodsMapper.updateSaleStatus(id, saleStatus);
+        redisTemplate.delete(CACHE_KEY_DETAIL + id);
+        invalidateListCaches();
+    }
+
+    @Override
+    public List<Goods> getSellerGoods(Integer userId) {
+        return goodsMapper.selectByUserId(userId);
+    }
+
+    @Override
+    public List<Goods> searchGoods(String keyword) {
+        return goodsMapper.selectByKeyword(keyword);
+    }
+
+    private void invalidateListCaches() {
+        try {
+            redisTemplate.delete(CACHE_KEY_GUESS_LIKE);
+            redisTemplate.delete(CACHE_KEY_SECOND_HAND);
+        } catch (Exception e) {
+            logger.warn("列表缓存清除失败", e);
+        }
     }
 
     /**

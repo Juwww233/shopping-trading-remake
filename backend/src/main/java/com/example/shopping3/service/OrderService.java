@@ -10,6 +10,10 @@ public interface OrderService {
                                     String address, String phone, String userName);
     void handleOrderMessage(Order order);
     Order getOrderDetail(String orderNo);
-    // 【新增】
     List<Order> getOrderListByUserId(Integer userId);
+
+    Map<String, Object> payOrder(String orderNo);
+    Map<String, Object> cancelOrder(String orderNo, Integer userId);
+    Map<String, Object> shipOrder(String orderNo);
+    Map<String, Object> confirmReceive(String orderNo);
 }

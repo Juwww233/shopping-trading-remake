@@ -16,7 +16,6 @@
         <div class="card-body">
           <div class="avatar-section">
             <div class="avatar-wrapper" @click="triggerAvatarUpload" title="点击更换头像">
-
               <!-- 状态 1: 加载中 -->
               <div v-if="avatarLoading" class="avatar-placeholder loading-placeholder">
                 <span>⏳</span>
@@ -33,14 +32,12 @@
                   @error="handleAvatarError"
               >
 
-              <!-- 状态 3: 无头像 (显示色块) -->
-              <div
+              <!-- 状态 3: 无头像 (使用 Avatar 组件显示首字符) -->
+              <Avatar
                   v-show="!avatarLoading && !userInfo.avatar"
-                  class="avatar-placeholder"
-                  :style="{ backgroundColor: avatarColor }"
-              >
-                {{ (userInfo.username || username || 'U').charAt(0).toUpperCase() }}
-              </div>
+                  :username="username"
+                  size="xl"
+              />
 
               <div class="avatar-overlay"><span>📷 更换</span></div>
             </div>
@@ -140,6 +137,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { getCurrentUser, updateUserInfo, uploadAvatar } from '@/api/user';
 import api from '@/api/index';
+import Avatar from '@/components/Avatar.vue';
 
 const router = useRouter();
 
@@ -162,12 +160,6 @@ const userInfo = ref({});
 
 // 从 LocalStorage 获取用户名（用于生成默认色块）
 const username = computed(() => localStorage.getItem('username') || 'User');
-
-// 动态头像颜色
-const avatarColor = computed(() => {
-  const colors = ['#8a2be2', '#ff6347', '#40e0d0', '#ffa500', '#2ecc71'];
-  return colors[username.value.length % colors.length];
-});
 
 const passwordMismatch = computed(() => {
   const { newPassword, confirmPassword } = passwordForm.value;
@@ -561,21 +553,9 @@ onMounted(() => {
   border-color: var(--primary-color);
 }
 
-.avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 36px;
-  font-weight: bold;
-  user-select: none;
-}
-
 .loading-placeholder {
   background-color: #f0f0f0 !important;
+  border-radius: 50%;
   animation: pulse 1.5s infinite;
 }
 

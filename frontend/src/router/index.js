@@ -1,12 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 
-// 1. 导入页面组件
 import AuthPage from '@/views/AuthPage.vue';
 import Home from '@/views/Home.vue';
 import Category from '@/views/Category.vue';
 import GoodInfo from '@/views/GoodInfo.vue';
 import UserProfile from '@/views/UserProfile.vue';
-import ChatView from "@/views/ChatView.vue";
 
 const routes = [
     {
@@ -44,18 +42,50 @@ const routes = [
         meta: { requiresAuth: true }
     },
     {
-        path: '/:pathMatch(.*)*',
-        redirect: '/auth'
-    },
-    {
         path: '/chat',
         name: 'Chat',
-        component: () => import('../views/ChatView.vue')
+        component: () => import('../views/ChatView.vue'),
+        meta: { requiresAuth: true }
     },
     {
         path: '/order',
         name: 'Order',
-        component: () => import('@/views/Order.vue')
+        component: () => import('@/views/Order.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/collect',
+        name: 'Collect',
+        component: () => import('@/views/Collect.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/publish',
+        name: 'PublishGoods',
+        component: () => import('@/views/PublishGoods.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/publish/:id',
+        name: 'EditGoods',
+        component: () => import('@/views/PublishGoods.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/search',
+        name: 'Search',
+        component: () => import('@/views/SearchResults.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/admin',
+        name: 'AdminDashboard',
+        component: () => import('@/views/admin/AdminDashboard.vue'),
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/:pathMatch(.*)*',
+        redirect: '/auth'
     }
 ];
 

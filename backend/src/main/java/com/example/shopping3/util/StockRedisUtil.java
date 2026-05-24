@@ -11,7 +11,7 @@ import java.util.Collections;
 public class StockRedisUtil {
 
     @Autowired
-    private StringRedisTemplate redisTemplate;  // ✅ 改用 StringRedisTemplate
+    private StringRedisTemplate redisTemplate;  
 
     private static final String STOCK_KEY_PREFIX = "goods:stock:";
 

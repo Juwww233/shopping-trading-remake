@@ -10,4 +10,9 @@ public interface OrderMapper {
     int insertOrder(Order order);
     Order selectByOrderNo(String orderNo);
     List<Order> selectByUserId(@Param("userId") Integer userId);
+    int countByOrderNo(@Param("orderNo") String orderNo);
+
+    int updateStatus(@Param("orderNo") String orderNo, @Param("status") String status);
+    int updatePayInfo(@Param("orderNo") String orderNo, @Param("payNo") String payNo,
+                      @Param("payTime") String payTime, @Param("status") String status);
 }

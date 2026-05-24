@@ -9,6 +9,5 @@ public class Address {
     private Integer userId;      // 用户ID（数据库字段：user_id）
     private String name;         // 收货人姓名
     private String phone;        // 手机号
-    private String addressDetail; // 详细地址（数据库字段：address_detail）
-    private Integer isDefault;   // 是否默认地址（数据库字段：is_default）
+    private String address;      // 详细地址
 }

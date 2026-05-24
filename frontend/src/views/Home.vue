@@ -1,359 +1,349 @@
 <template>
-  <div class="home-container">
-    <!-- 左侧分类栏（固定） -->
-    <aside class="sidebar">
-      <div class="sidebar-header">商品分类</div>
-      <nav class="category-nav">
-        <div
-            class="category-item"
-            v-for="item in categoryOptions"
-            :key="item.value"
-            :class="{ active: currentCategory === item.value }"
-            @click="handleCategoryChange(item.value)"
-        >
-          {{ item.label }}
+  <div class="home">
+    <!-- Hero Banner -->
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="hero-text">
+          <h1>发现你的<span>心仪好物</span></h1>
+          <p>品质好货 · 超值二手 · 尽在 NJUST SHOP</p>
         </div>
-      </nav>
-    </aside>
-
-    <!-- 右侧内容区域 -->
-    <main class="main-content">
-      <!-- 1. 首页初始展示：猜你喜欢 + 二手专区 -->
-      <div v-if="currentCategory === 'home'" class="home-sections">
-        <!-- 猜你喜欢区域 -->
-        <section class="goods-section">
-          <h2 class="section-title">猜你喜欢</h2>
-          <div class="goods-grid">
-            <div
-                class="goods-card"
-                v-for="goods in guessYouLikeList"
-                :key="goods.id"
-                @click="goToGoodDetail(goods.id)"
-            >
-              <img
-                  :src="goods.img || '/images/default-goods.png'"
-                  alt="商品图片"
-                  class="goods-img"
-                  @error="(e) => e.target.src = '/images/default-goods.png'"
-              >
-              <div class="goods-info">
-                <h3 class="goods-name">{{ goods.name }}</h3>
-                <p class="goods-price">¥{{ goods.price.toFixed(2) }}</p>
-                <p class="goods-address" v-if="goods.address">📍{{ goods.address }}</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- 二手专区区域 -->
-        <section class="goods-section">
-          <h2 class="section-title">二手好物专区</h2>
-          <div class="goods-grid">
-            <div
-                class="goods-card"
-                v-for="goods in secondHandList"
-                :key="goods.id"
-                @click="goToGoodDetail(goods.id)"
-            >
-              <img
-                  :src="goods.img || '/images/default-goods.png'"
-                  alt="商品图片"
-                  class="goods-img"
-                  @error="(e) => e.target.src = '/images/default-goods.png'"
-              >
-              <div class="goods-info">
-                <h3 class="goods-name">{{ goods.name }}</h3>
-                <p class="goods-price">¥{{ goods.price.toFixed(2) }}</p>
-                <p class="goods-status" v-if="goods.content">
-                  {{ goods.content.match(/\d+成新/)?.[0] || '二手商品' }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+        <div class="hero-stats">
+          <div class="stat"><strong>1000+</strong><span>精选商品</span></div>
+          <div class="stat"><strong>500+</strong><span>满意用户</span></div>
+          <div class="stat"><strong>24h</strong><span>快速发货</span></div>
+        </div>
       </div>
+    </section>
 
-      <!-- 2. 分类商品展示 -->
-      <div v-else class="category-goods">
-        <section class="goods-section">
-          <h2 class="section-title">{{ getCategoryLabel(currentCategory) }}</h2>
-          <div v-if="categoryGoodsList.length > 0" class="goods-grid">
-            <div
-                class="goods-card"
-                v-for="goods in categoryGoodsList"
-                :key="goods.id"
-                @click="goToGoodDetail(goods.id)"
-            >
-              <img
-                  :src="goods.img || '/images/default-goods.png'"
-                  alt="商品图片"
-                  class="goods-img"
-                  @error="(e) => e.target.src = '/images/default-goods.png'"
-              >
-              <div class="goods-info">
-                <h3 class="goods-name">{{ goods.name }}</h3>
-                <p class="goods-price">¥{{ goods.price.toFixed(2) }}</p>
-                <p class="goods-address" v-if="goods.address">📍{{ goods.address }}</p>
-                <p class="goods-status" v-if="currentCategory === '二手物品' && goods.content">
-                  {{ goods.content.match(/\d+成新/)?.[0] || '成色未知' }}
-                </p>
-              </div>
+    <!-- Main Content -->
+    <div class="main-area">
+      <aside class="sidebar">
+        <div class="sidebar-title">全部分类</div>
+        <div
+          v-for="item in categories"
+          :key="item.value"
+          :class="['cat', { on: cur === item.value }]"
+          @click="switchCat(item.value)"
+        >
+          <span class="cat-icon">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+          <span class="cat-arrow">›</span>
+        </div>
+
+        <!-- 公告区域 -->
+        <div v-if="notices.length" class="notice-box">
+          <div class="notice-title">📢 最新公告</div>
+          <div class="notice-list">
+            <div v-for="n in displayNotices" :key="n.id" class="notice-item">
+              <span class="notice-dot"></span>
+              <span class="notice-text">{{ n.title }}</span>
             </div>
           </div>
-          <div v-else class="empty-tip">
-            暂无{{ getCategoryLabel(currentCategory) }}类商品~
-          </div>
-        </section>
+          <button v-if="notices.length > 2" class="notice-more" @click="showAllNotices = !showAllNotices">
+            {{ showAllNotices ? '收起' : '更多' }}
+          </button>
+        </div>
+      </aside>
+
+      <div class="content">
+        <!-- 首页：猜你喜欢 + 二手好物 -->
+        <template v-if="cur === 'home'">
+          <section class="sec">
+            <div class="sec-head"><h2>猜你喜欢</h2><span>为你精选好物</span></div>
+            <div v-if="loading" class="grid skel">
+              <div v-for="i in 6" :key="i" class="sk-card"><div class="sk-img"/><div class="sk-l1"/><div class="sk-l2"/></div>
+            </div>
+            <div v-else class="grid">
+              <div v-for="g in guessList" :key="g.id" class="card" @click="$router.push(`/good/${g.id}`)">
+                <div class="card-img">
+                  <img :src="g.img" :alt="g.name" @error="e=>e.target.src='/default.png'" />
+                  <div class="card-price">¥{{ g.price }}</div>
+                </div>
+                <div class="card-info">
+                  <h4>{{ g.name }}</h4>
+                  <span class="card-addr">{{ g.address || '全国' }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="sec">
+            <div class="sec-head"><h2>二手好物</h2><span>品质闲置</span></div>
+            <div v-if="loading" class="grid skel">
+              <div v-for="i in 6" :key="i" class="sk-card"><div class="sk-img"/><div class="sk-l1"/><div class="sk-l2"/></div>
+            </div>
+            <div v-else class="grid">
+              <div v-for="g in secondList" :key="g.id" class="card" @click="$router.push(`/good/${g.id}`)">
+                <div class="card-img">
+                  <img :src="g.img" :alt="g.name" @error="e=>e.target.src='/default.png'" />
+                  <div class="card-price">¥{{ g.price }}</div>
+                </div>
+                <div class="card-info">
+                  <h4>{{ g.name }}</h4>
+                  <span class="card-addr">{{ g.address || '全国' }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </template>
+
+        <!-- 分类商品 -->
+        <template v-else>
+          <section class="sec">
+            <div class="sec-head"><h2>{{ curLabel }}</h2></div>
+            <div v-if="catLoading" class="grid skel">
+              <div v-for="i in 6" :key="i" class="sk-card"><div class="sk-img"/><div class="sk-l1"/><div class="sk-l2"/></div>
+            </div>
+            <div v-else-if="catList.length === 0" class="empty">
+              <span class="empty-icon">📦</span><p>暂无商品</p>
+            </div>
+            <div v-else class="grid">
+              <div v-for="g in catList" :key="g.id" class="card" @click="$router.push(`/good/${g.id}`)">
+                <div class="card-img">
+                  <img :src="g.img" :alt="g.name" @error="e=>e.target.src='/default.png'" />
+                  <div class="card-price">¥{{ g.price }}</div>
+                </div>
+                <div class="card-info">
+                  <h4>{{ g.name }}</h4>
+                  <span class="card-addr">{{ g.address || '全国' }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </template>
       </div>
-    </main>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import {
-  getGuessYouLikeGoods,
-  getSecondHandGoods,
-  getGoodsByCategory
-} from '@/api/goods';
+import { getGuessYouLikeGoods, getSecondHandGoods, getGoodsByCategory } from '@/api/goods';
+import { getAllCategories } from '@/api/category';
+import { getNoticeList } from '@/api/notice';
 
 const router = useRouter();
+const icons = ['💻','🍔','👔','🏠','🔄','📱','🎮','📚','🎵','⚽','💄','🚗'];
+const categories = ref([{ label:'首页', value:'home', icon:'🏠' }]);
+const cur = ref('home');
+const guessList = ref([]);
+const secondList = ref([]);
+const catList = ref([]);
+const loading = ref(true);
+const catLoading = ref(false);
+const notices = ref([]);
+const showAllNotices = ref(false);
 
-const categoryOptions = ref([
-  { label: '首页', value: 'home' },
-  { label: '电子产品', value: '电子产品' },
-  { label: '美食', value: '美食' },
-  { label: '服装', value: '服装' },
-  { label: '生活', value: '生活' },
-  { label: '二手物品', value: '二手物品' }
-]);
-
-const currentCategory = ref('home');
-const guessYouLikeList = ref([]);
-const secondHandList = ref([]);
-const categoryGoodsList = ref([]);
-
-const goToGoodDetail = (id) => {
-  if (!id) {
-    console.warn('商品ID不存在，无法跳转');
-    return;
-  }
-  router.push(`/good/${id}`);
-};
-
-const handleCategoryChange = (categoryValue) => {
-  currentCategory.value = categoryValue;
-};
-
-const getCategoryLabel = (value) => {
-  const target = categoryOptions.value.find(item => item.value === value);
-  return target ? target.label : '未知分类';
-};
-
-const fetchCategoryGoods = async (category) => {
-  if (category === 'home') return;
-  try {
-    const res = await getGoodsByCategory(category);
-    if (res.code === 200) {
-      categoryGoodsList.value = res.data;
-    } else {
-      categoryGoodsList.value = [];
-    }
-  } catch (error) {
-    categoryGoodsList.value = [];
-    console.error(`获取${getCategoryLabel(category)}商品失败：`, error);
-  }
-};
-
-const initHomeData = async () => {
-  try {
-    const [guessRes, secondRes] = await Promise.all([
-      getGuessYouLikeGoods(),
-      getSecondHandGoods()
-    ]);
-    if (guessRes.code === 200) guessYouLikeList.value = guessRes.data;
-    if (secondRes.code === 200) secondHandList.value = secondRes.data;
-  } catch (error) {
-    console.error('初始化首页数据失败：', error);
-  }
-};
-
-onMounted(() => {
-  initHomeData();
+const displayNotices = computed(() => {
+  if (showAllNotices.value) return notices.value;
+  return notices.value.slice(0, 2);
 });
 
-watch(
-    () => currentCategory.value,
-    (newCategory) => {
-      fetchCategoryGoods(newCategory);
-    },
-    { immediate: true }
-);
+const curLabel = ref('');
+
+const switchCat = (v) => {
+  cur.value = v;
+  const c = categories.value.find(x => x.value === v);
+  curLabel.value = c ? c.label : v;
+};
+
+const fetchCat = async (cat) => {
+  if (cat === 'home') return;
+  catLoading.value = true;
+  try {
+    const r = await getGoodsByCategory(cat);
+    catList.value = r.code === 200 ? r.data : [];
+  } catch(e) { catList.value = []; }
+  finally { catLoading.value = false; }
+};
+
+onMounted(async () => {
+  try {
+    const [g, s, cs, ns] = await Promise.all([
+      getGuessYouLikeGoods(), getSecondHandGoods(), getAllCategories(), getNoticeList()
+    ]);
+    if (g.code === 200) guessList.value = g.data;
+    if (s.code === 200) secondList.value = s.data;
+    if (cs.code === 200) cs.data.forEach((c,i) => categories.value.push({ label:c.name, value:c.name, icon:icons[i%icons.length] }));
+    if (ns.code === 200) notices.value = ns.data;
+  } catch(e) { console.error(e); }
+  finally { loading.value = false; }
+});
+
+watch(cur, fetchCat, { immediate: true });
 </script>
 
 <style scoped>
-/* 全局布局 */
-.home-container {
-  display: flex;
-  width: 100%;
-  max-width: 1440px;
-  margin: 0 auto;
-  /* 关键修改：减去 Header 的高度 (70px)，防止内容被遮挡或出现双滚动条 */
-  min-height: calc(100vh - 70px);
+/* Hero */
+.hero {
+  background: linear-gradient(135deg, #2d1b69 0%, #6c5ce7 60%, #a29bfe 100%);
+  color: #fff; position: relative; overflow: hidden;
+}
+.hero::after {
+  content: ''; position: absolute; right: -80px; top: -60px;
+  width: 400px; height: 400px; border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+.hero-inner {
+  max-width: var(--max-width); margin: 0 auto; padding: 40px 24px;
+  display: flex; justify-content: space-between; align-items: center;
+  position: relative; z-index: 1;
+}
+.hero-text h1 { font-size: 36px; font-weight: 800; }
+.hero-text h1 span { color: #fd79a8; }
+.hero-text p { font-size: 16px; opacity: 0.8; margin-top: 8px; }
+.hero-stats { display: flex; gap: 32px; }
+.stat { text-align: center; }
+.stat strong { display: block; font-size: 28px; font-weight: 700; }
+.stat span { font-size: 13px; opacity: 0.7; }
+
+/* Main area */
+.main-area {
+  max-width: var(--max-width); margin: 0 auto; padding: 20px 24px;
+  display: flex; gap: 24px; align-items: flex-start;
 }
 
-/* 左侧分类栏 */
+/* Sidebar */
 .sidebar {
-  width: 220px;
-  background-color: #f5f7fa;
-  border-right: 1px solid #e5e6eb;
-  position: sticky;
-  top: 0;
-  /* 关键修改：高度自适应或设为视口高度减 header */
-  height: calc(100vh - 70px);
-  padding: 20px 0;
-  overflow-y: auto;
+  width: 200px; flex-shrink: 0; background: #fff; border-radius: var(--radius-lg);
+  box-shadow: var(--shadow); position: sticky; top: 80px; overflow: hidden;
 }
-
-.sidebar-header {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1d2129;
-  padding: 0 20px 15px;
-  border-bottom: 1px solid #e5e6eb;
-  margin-bottom: 10px;
+.sidebar-title {
+  padding: 14px 18px; font-weight: 700; font-size: 15px; color: var(--text);
+  border-bottom: 1px solid var(--border);
 }
-
-.category-nav {
-  padding: 10px 0;
+.cat {
+  display: flex; align-items: center; gap: 10px; padding: 12px 18px;
+  cursor: pointer; font-size: 14px; color: var(--text-light); transition: all .15s;
 }
+.cat:hover { background: var(--bg); color: var(--text); }
+.cat.on { background: rgba(108,92,231,0.08); color: var(--primary); font-weight: 600; }
+.cat-icon { font-size: 16px; flex-shrink: 0; }
+.cat-arrow { margin-left: auto; color: var(--text-muted); font-size: 16px; }
+.cat.on .cat-arrow { color: var(--primary); }
 
-.category-item {
-  padding: 12px 20px;
-  color: #4e5969;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
+/* 公告框 */
+.notice-box {
+  margin: 12px 12px 0;
+  background: linear-gradient(135deg, #fff9e6 0%, #fff3cc 100%);
+  border: 1px solid #ffe082;
+  border-radius: var(--radius);
+  padding: 12px;
 }
-
-.category-item:hover {
-  background-color: #e8f3ff;
-  color: #1890ff;
-}
-
-.category-item.active {
-  background-color: #1890ff;
-  color: #fff;
-}
-
-/* 右侧主内容区 */
-.main-content {
-  flex: 1;
-  padding: 24px;
-  background-color: #fff;
-}
-
-.goods-section {
-  margin-bottom: 40px;
-}
-
-.section-title {
-  font-size: 22px;
-  font-weight: 600;
-  color: #1d2129;
-  margin-bottom: 20px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #1890ff;
-}
-
-.goods-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 24px;
-}
-
-.goods-card {
-  border: 1px solid #e5e6eb;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  background-color: #fff;
-}
-
-.goods-card:hover {
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-  border-color: #1890ff;
-}
-
-.goods-img {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  pointer-events: none;
-}
-
-.goods-info {
-  padding: 12px 16px;
-}
-
-.goods-name {
-  font-size: 14px;
-  color: #1d2129;
+.notice-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f57f17;
   margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed #ffe082;
+}
+.notice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.notice-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: #6d5d17;
+  line-height: 1.4;
+}
+.notice-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f57f17;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.notice-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  overflow: hidden;
-  height: 40px;
 }
-
-.goods-price {
-  font-size: 16px;
-  color: #f53f3f;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.goods-address, .goods-status {
+.notice-more {
+  margin-top: 8px;
+  width: 100%;
+  padding: 4px 0;
+  background: none;
+  border: 1px dashed #ffe082;
+  border-radius: 4px;
   font-size: 12px;
-  color: #86909c;
-}
-
-.empty-tip {
+  color: #f57f17;
+  cursor: pointer;
   text-align: center;
-  padding: 60px 0;
-  color: #86909c;
-  font-size: 16px;
+}
+.notice-more:hover {
+  background: rgba(245, 127, 23, 0.1);
 }
 
-/* 响应式适配 */
+/* Content */
+.content { flex: 1; min-width: 0; }
+
+/* Section */
+.sec { margin-bottom: 32px; }
+.sec-head {
+  display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px;
+}
+.sec-head h2 { font-size: 22px; font-weight: 700; }
+.sec-head span { font-size: 14px; color: var(--text-muted); }
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+.card {
+  background: #fff; border-radius: var(--radius-lg); overflow: hidden;
+  cursor: pointer; box-shadow: var(--shadow); transition: all .25s;
+}
+.card:hover { transform: translateY(-4px); box-shadow: var(--shadow-hover); }
+.card-img {
+  position: relative; width: 100%; height: 0; padding-bottom: 100%;
+  background: #f0f0f0; overflow: hidden;
+}
+.card-img img {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  object-fit: cover; transition: transform .4s;
+}
+.card:hover .card-img img { transform: scale(1.06); }
+.card-price {
+  position: absolute; bottom: 8px; left: 8px;
+  background: rgba(0,0,0,0.7); color: #fff; padding: 3px 10px;
+  border-radius: 4px; font-size: 14px; font-weight: 700;
+}
+.card-info { padding: 12px 14px; }
+.card-info h4 {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px;
+}
+.card-addr { font-size: 12px; color: var(--text-muted); }
+
+/* Skeleton */
+.sk-card { background: #fff; border-radius: var(--radius-lg); overflow: hidden; }
+.sk-img { width: 100%; padding-bottom: 100%; background: linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%); background-size:200% 100%; animation: shim 1.5s infinite; }
+.sk-l1 { height: 16px; margin: 12px 14px 8px; background: #eee; border-radius: 4px; }
+.sk-l2 { height: 14px; margin: 0 14px 12px; width: 50%; background: #eee; border-radius: 4px; }
+@keyframes shim { 0%{background-position:200% 0}100%{background-position:-200% 0} }
+
+.empty { text-align: center; padding: 80px 0; color: var(--text-muted); }
+.empty-icon { font-size: 48px; }
+
 @media (max-width: 768px) {
-  .home-container {
-    flex-direction: column;
-  }
-
-  .sidebar {
-    width: 100%;
-    height: auto;
-    position: relative;
-  }
-
-  .category-nav {
-    display: flex;
-    flex-wrap: wrap;
-  }
-
-  .category-item {
-    padding: 8px 12px;
-    flex: 1;
-    text-align: center;
-  }
-
-  .goods-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
+  .hero-inner { flex-direction: column; text-align: center; gap: 20px; }
+  .hero-text h1 { font-size: 24px; }
+  .main-area { flex-direction: column; }
+  .sidebar { width: 100%; position: static; }
+  .sidebar .cat { display: none; }
+  .sidebar .cat.on, .sidebar .cat:first-of-type { display: flex; }
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }
 </style>

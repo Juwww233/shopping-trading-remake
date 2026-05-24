@@ -43,4 +43,18 @@
     <select id="selectByUserId" resultMap="OrderResultMap">
         SELECT * FROM orders WHERE user_id = #{userId} ORDER BY time DESC
     </select>
+
+    <!-- 【新增】根据订单号统计数量，用于幂等性检查 -->
+    <select id="countByOrderNo" resultType="int">
+        SELECT COUNT(*) FROM orders WHERE order_no = #{orderNo}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE orders SET status = #{status} WHERE order_no = #{orderNo}
+    </update>
+
+    <update id="updatePayInfo">
+        UPDATE orders SET pay_no = #{payNo}, pay_time = #{payTime}, status = #{status}
+        WHERE order_no = #{orderNo}
+    </update>
 </mapper>

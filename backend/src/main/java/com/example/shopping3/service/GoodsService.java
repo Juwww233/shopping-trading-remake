@@ -11,4 +11,12 @@ public interface GoodsService {
 
     Goods getGoodsDetail(Integer id);
 
+    void incrementReadCount(Integer id);
+
+    Goods publishGoods(Goods goods);
+    Goods updateGoods(Goods goods);
+    void updateGoodsStatus(Integer id, String status);
+    void updateGoodsSaleStatus(Integer id, String saleStatus);
+    List<Goods> getSellerGoods(Integer userId);
+    List<Goods> searchGoods(String keyword);
 }

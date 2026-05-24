@@ -1,51 +1,96 @@
 package com.example.shopping3.controller;
 
+import com.example.shopping3.common.Result;
 import com.example.shopping3.entity.Address;
+import com.example.shopping3.entity.User;
 import com.example.shopping3.service.AddressService;
+import com.example.shopping3.util.SessionUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-// 标记为REST控制器，返回JSON数据
 @RestController
-// 统一前缀：所有地址相关接口都以/address开头
 @RequestMapping("/address")
 public class AddressController {
 
     @Autowired
     private AddressService addressService;
 
-    // 查询用户所有地址：GET请求，示例：http://localhost:8080/address/user/1
+    @Autowired
+    private SessionUtil sessionUtil;
+
     @GetMapping("/user/{userId}")
-    public List<Address> getUserAddresses(@PathVariable int userId) {
-        return addressService.getUserAddresses(userId);
+    public Result<List<Address>> getUserAddresses(@PathVariable int userId) {
+        try {
+            List<Address> list = addressService.getUserAddresses(userId);
+            return Result.success(list);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取地址列表失败：" + e.getMessage());
+        }
     }
 
-    // 根据ID查询地址：GET请求，示例：http://localhost:8080/address/1
     @GetMapping("/{id}")
-    public Address getAddressById(@PathVariable int id) {
-        return addressService.getAddressById(id);
+    public Result<Address> getAddressById(@PathVariable int id) {
+        try {
+            Address address = addressService.getAddressById(id);
+            if (address == null) {
+                return Result.error("地址不存在");
+            }
+            return Result.success(address);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("获取地址失败：" + e.getMessage());
+        }
     }
 
-    // 新增地址：POST请求，JSON传参
     @PostMapping
-    public String addAddress(@RequestBody Address address) {
-        addressService.addAddress(address);
-        return "新增地址成功";
+    public Result<String> addAddress(@RequestBody Address address,
+                                     @RequestHeader("X-Session-Id") String sessionId) {
+        User user = (User) sessionUtil.getSession(sessionId);
+        if (user == null) {
+            return Result.error("未登录或会话过期");
+        }
+        try {
+            address.setUserId(user.getId());
+            addressService.addAddress(address);
+            return Result.success("新增地址成功");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("新增地址失败：" + e.getMessage());
+        }
     }
 
-    // 修改地址：PUT请求，JSON传参
     @PutMapping
-    public String editAddress(@RequestBody Address address) {
-        addressService.editAddress(address);
-        return "修改地址成功";
+    public Result<String> editAddress(@RequestBody Address address,
+                                      @RequestHeader("X-Session-Id") String sessionId) {
+        User user = (User) sessionUtil.getSession(sessionId);
+        if (user == null) {
+            return Result.error("未登录或会话过期");
+        }
+        try {
+            addressService.editAddress(address);
+            return Result.success("修改地址成功");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("修改地址失败：" + e.getMessage());
+        }
     }
 
-    // 删除地址：DELETE请求，示例：http://localhost:8080/address/1
     @DeleteMapping("/{id}")
-    public String removeAddress(@PathVariable int id) {
-        addressService.removeAddress(id);
-        return "删除地址成功";
+    public Result<String> removeAddress(@PathVariable int id,
+                                        @RequestHeader("X-Session-Id") String sessionId) {
+        User user = (User) sessionUtil.getSession(sessionId);
+        if (user == null) {
+            return Result.error("未登录或会话过期");
+        }
+        try {
+            addressService.removeAddress(id);
+            return Result.success("删除地址成功");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("删除地址失败：" + e.getMessage());
+        }
     }
 }

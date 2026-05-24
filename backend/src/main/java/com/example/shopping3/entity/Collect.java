@@ -7,5 +7,4 @@ public class Collect {
     private Integer id;
     private Integer goodsId;
     private Integer userId;
-    private Integer num; // 数量
 }

@@ -1,292 +1,79 @@
 <template>
-  <div class="chat-container">
-    <div class="chat-header">
-      <h3>与卖家聊天</h3>
+  <div class="chat-shell">
+    <div class="top">
+      <button class="back" @click="$router.back()">←</button>
+      <div class="partner"><div class="av">👤</div><div><h4>聊天</h4><span class="on">在线</span></div></div>
     </div>
-
-    <div class="message-list" ref="messageList">
-      <div
-          v-for="msg in messages"
-          :key="msg.id"
-          :class="['message-bubble', msg.senderId === buyerId ? 'sent' : 'received']"
-      >
-        <div class="message-content">{{ msg.content }}</div>
-        <div class="message-time">{{ formatTime(msg.createTime) }}</div>
-      </div>
-      <div v-if="messages.length === 0" class="no-messages">
-        暂无消息，开始聊天吧~
+    <div class="msgs" ref="box">
+      <div v-if="!msgs.length" class="empty">💬 开始对话吧</div>
+      <div v-for="m in msgs" :key="m.id" :class="['bub', m.senderId===buyer?'me':'them']">
+        <div class="txt">{{ m.content }}</div>
+        <div class="t">{{ ft(m.createTime) }}</div>
       </div>
     </div>
-
-    <div class="input-area">
-      <input
-          v-model="newMessage"
-          @keyup.enter="sendMessage"
-          placeholder="输入消息..."
-      />
-      <button @click="sendMessage" :disabled="sending">发送</button>
+    <div class="bar">
+      <input v-model="nm" placeholder="输入消息..." @keyup.enter="send"/>
+      <button @click="send" :disabled="sending">发送</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref,onMounted,onBeforeUnmount,nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import service from '@/api/index';
+const route=useRoute();
+const sellerId=route.query.targetId;
+const msgs=ref([]); const nm=ref(''); const buyer=ref(null); const sending=ref(false); const box=ref(null);
+let sid=null; let ws=null;
 
-const route = useRoute();
-const sellerId = route.query.targetId;
-const messages = ref([]);
-const newMessage = ref('');
-const buyerId = ref(null);
-const sending = ref(false);
-let chatSessionId = null;
-let ws = null;
-
-onMounted(async () => {
-  const userId = localStorage.getItem('userId');
-  const sessionId = localStorage.getItem('sessionId');
-
-  if (!sessionId || !userId) {
-    alert('请先登录');
-    window.location.href = '/login';
-    return;
-  }
-
-  try {
-    // 1. 获取当前用户信息
-    // 注意：拦截器已返回 response.data (Result 对象)
-    // Result 结构: { code: 200, data: User, msg: "success" }
-    const userResponse = await service.get(`/user/info/${userId}`);
-    console.log('用户信息响应:', userResponse);
-
-    // 【修复】userResponse 已经是 Result 对象，直接取 .data
-    const userData = userResponse.data;
-    if (!userData) {
-      throw new Error('用户数据为空');
-    }
-    buyerId.value = userData.id;
-
-    // 2. 创建或获取聊天会话
-    const sessionRes = await service.post('/chat/session', { sellerId });
-    console.log('会话响应:', sessionRes);
-    chatSessionId = sessionRes.data?.id || sessionRes.id;
-
-    // 3. 获取历史消息
-    const historyRes = await service.get('/chat/messages', {
-      params: { sessionId: chatSessionId }
-    });
-    console.log('消息历史响应:', historyRes);
-    messages.value = historyRes.data || historyRes || [];
-
-    // 4. 初始化 WebSocket
-    setupWebSocket(chatSessionId);
-
-    // 5. 滚动到底部
-    setTimeout(scrollBottom, 100);
-  } catch (error) {
-    console.error('初始化失败:', error);
-    const status = error.response?.status;
-    if (status === 401) {
-      alert('登录已过期，请重新登录');
-      window.location.href = '/login';
-    } else {
-      alert('聊天初始化失败: ' + (error.message || '未知错误'));
-    }
-  }
+onMounted(async()=>{
+  const uid=localStorage.getItem('userId'); const ss=localStorage.getItem('sessionId');
+  if(!ss||!uid){alert('请先登录');return;}
+  try{
+    const u=await service.get(`/user/info/${uid}`); buyer.value=u.data?.id;
+    const s=await service.post('/chat/session',{sellerId}); sid=s.data?.id||s.id;
+    const h=await service.get('/chat/messages',{params:{sessionId:sid}}); msgs.value=h.data||h||[];
+    setupWS(sid); await nextTick(); scroll();
+  }catch(e){}
 });
+onBeforeUnmount(()=>{if(ws)ws.close();});
 
-onBeforeUnmount(() => {
-  if (ws) {
-    ws.close();
-  }
-});
-
-const setupWebSocket = (sessionId) => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${protocol}//${window.location.host}/ws-chat`);
-
-  ws.onopen = () => {
-    console.log('WebSocket 连接成功');
-    ws.send(JSON.stringify({
-      destination: '/app/chat/session/' + sessionId,
-      message: 'SUBSCRIBE'
-    }));
-  };
-
-  ws.onmessage = (event) => {
-    try {
-      const message = JSON.parse(event.data);
-      const exists = messages.value.some(m => m.id === message.id);
-      if (!exists) {
-        messages.value.push(message);
-        scrollBottom();
-      }
-    } catch (e) {
-      console.error('解析消息失败:', e);
-    }
-  };
-
-  ws.onerror = (error) => {
-    console.error('WebSocket 错误:', error);
-  };
-
-  ws.onclose = () => {
-    console.log('WebSocket 连接关闭');
-  };
+const setupWS=(id)=>{
+  const p=location.protocol==='https:'?'wss:':'ws:';
+  ws=new WebSocket(`${p}//${location.host}/ws-chat`);
+  ws.onopen=()=>{ws.send(JSON.stringify({destination:'/app/chat/session/'+id,message:'SUBSCRIBE'}));};
+  ws.onmessage=(e)=>{try{const m=JSON.parse(e.data); if(!msgs.value.some(x=>x.id===m.id)){msgs.value.push(m);nextTick(()=>scroll());}}catch(e){}};
 };
-
-const sendMessage = async () => {
-  if (!newMessage.value.trim() || sending.value) return;
-
-  sending.value = true;
-  try {
-    const response = await service.post('/chat/send', {
-      sessionId: chatSessionId,
-      content: newMessage.value.trim()
-    });
-
-    console.log('发送响应:', response);
-
-    // 【修复】处理不同的响应格式
-    const messageData = response.data || response;
-    if (messageData) {
-      messages.value.push(messageData);
-    }
-
-    newMessage.value = '';
-    scrollBottom();
-  } catch (error) {
-    console.error('发送失败:', error);
-    console.error('错误详情:', error.response?.data);
-    alert('消息发送失败: ' + (error.response?.data?.msg || error.message || '未知错误'));
-  } finally {
-    sending.value = false;
-  }
+const send=async()=>{if(!nm.value.trim()||sending.value)return; sending.value=true;
+  try{const r=await service.post('/chat/send',{sessionId:sid,content:nm.value.trim()}); const d=r.data||r; if(d){msgs.value.push(d);nm.value='';nextTick(()=>scroll());}}catch(e){} finally{sending.value=false;}
 };
-
-const scrollBottom = () => {
-  const container = document.querySelector('.message-list');
-  if (container) {
-    container.scrollTop = container.scrollHeight;
-  }
-};
-
-const formatTime = (timeStr) => {
-  if (!timeStr) return '';
-  const date = new Date(timeStr);
-  return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-};
+const scroll=()=>{if(box.value)box.value.scrollTop=box.value.scrollHeight;};
+const ft=t=>t?new Date(t).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}):'';
 </script>
 
 <style scoped>
-.chat-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f5f5f5;
-}
-
-.chat-header {
-  padding: 15px 20px;
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.chat-header h3 {
-  margin: 0;
-  font-size: 18px;
-  color: #333;
-}
-
-.message-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  background: #f5f5f5;
-}
-
-.no-messages {
-  text-align: center;
-  color: #999;
-  padding: 40px;
-  font-size: 14px;
-}
-
-.message-bubble {
-  padding: 10px 15px;
-  margin: 8px 0;
-  max-width: 70%;
-  border-radius: 12px;
-  position: relative;
-}
-
-.message-bubble.sent {
-  background: #007bff;
-  color: #fff;
-  margin-left: auto;
-  border-bottom-right-radius: 4px;
-}
-
-.message-bubble.received {
-  background: #fff;
-  color: #333;
-  margin-right: auto;
-  border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-}
-
-.message-content {
-  word-wrap: break-word;
-  line-height: 1.4;
-}
-
-.message-time {
-  font-size: 11px;
-  margin-top: 4px;
-  opacity: 0.7;
-  text-align: right;
-}
-
-.input-area {
-  padding: 15px 20px;
-  background: #fff;
-  border-top: 1px solid #e0e0e0;
-  display: flex;
-  gap: 10px;
-}
-
-.input-area input {
-  flex: 1;
-  padding: 12px 15px;
-  border: 1px solid #ddd;
-  border-radius: 24px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.input-area input:focus {
-  border-color: #007bff;
-}
-
-.input-area button {
-  padding: 12px 25px;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 24px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-.input-area button:hover {
-  background: #0056b3;
-}
-
-.input-area button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
+.chat-shell { max-width: 800px; margin: 0 auto; height: calc(100vh - 60px); display: flex; flex-direction: column; background: #fff; border-left:1px solid var(--border); border-right:1px solid var(--border); }
+.top { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.back { background: none; font-size: 16px; color: var(--text-light); cursor: pointer; }
+.partner { display: flex; align-items: center; gap: 8px; }
+.av { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.partner h4 { font-size: 15px; font-weight: 600; }
+.on { font-size: 11px; color: var(--success); }
+.msgs { flex: 1; overflow-y: auto; padding: 18px; background: var(--bg); display: flex; flex-direction: column; gap: 12px; }
+.empty { text-align: center; padding: 80px 0; color: var(--text-muted); }
+.bub { max-width: 70%; animation: up .3s; }
+.bub.me { align-self: flex-end; }
+.bub.them { align-self: flex-start; }
+.txt { padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; }
+.bub.me .txt { background: var(--primary); color: #fff; border-bottom-right-radius: 6px; }
+.bub.them .txt { background: #fff; color: var(--text); border-bottom-left-radius: 6px; box-shadow: var(--shadow); }
+.t { font-size: 11px; color: var(--text-muted); margin-top: 4px; padding: 0 4px; }
+.bub.me .t { text-align: right; }
+.bar { display: flex; gap: 10px; padding: 12px 18px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.bar input { flex: 1; padding: 10px 16px; border: 1px solid var(--border); border-radius: 20px; font-size: 14px; }
+.bar input:focus { border-color: var(--primary); }
+.bar button { padding: 10px 22px; background: var(--primary); color: #fff; border-radius: 20px; font-size: 14px; font-weight: 600; }
+.bar button:disabled { opacity: 0.5; }
+@keyframes up { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
 </style>

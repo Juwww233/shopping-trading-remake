@@ -1,5 +1,6 @@
 package com.example.shopping3.controller;
 
+import com.example.shopping3.annotation.NoAuth;
 import com.example.shopping3.common.Result;
 import com.example.shopping3.entity.Goods;
 import com.example.shopping3.service.GoodsService;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@NoAuth
 @RestController
 @RequestMapping("/goods")
 public class GoodsController {
@@ -61,6 +63,21 @@ public class GoodsController {
         }
     }
 
+    // 商品搜索
+    @GetMapping("/search")
+    public Result<List<Goods>> searchGoods(@RequestParam String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return Result.error("搜索关键词不能为空");
+        }
+        try {
+            List<Goods> goodsList = goodsService.searchGoods(keyword.trim());
+            return Result.success(goodsList);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("搜索失败：" + e.getMessage());
+        }
+    }
+
     //商品详情接口
     @GetMapping("/detail/{id}")
     public Result<Goods> getGoodsDetail(@PathVariable Integer id) {
@@ -72,6 +89,7 @@ public class GoodsController {
             if (goods == null) {
                 return Result.error("商品不存在或已下架");
             }
+            goodsService.incrementReadCount(id);
             return Result.success(goods);
         } catch (Exception e) {
             e.printStackTrace();

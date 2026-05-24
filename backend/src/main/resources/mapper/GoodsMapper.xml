@@ -50,4 +50,34 @@
     <update id="updateStock" parameterType="map">
         UPDATE goods SET stock = stock - #{count} WHERE id = #{goodsId}
     </update>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO goods (name, price, stock, content, address, img, date, status, category, user_id, sale_status, read_count)
+        VALUES (#{name}, #{price}, #{stock}, #{content}, #{address}, #{img}, #{date}, #{status}, #{category}, #{userId}, #{saleStatus}, #{readCount})
+    </insert>
+
+    <update id="update">
+        UPDATE goods SET name = #{name}, price = #{price}, stock = #{stock},
+        content = #{content}, address = #{address}, img = #{img},
+        category = #{category}, sale_status = #{saleStatus}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE goods SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="updateSaleStatus">
+        UPDATE goods SET sale_status = #{saleStatus} WHERE id = #{id}
+    </update>
+
+    <select id="selectByUserId" resultType="com.example.shopping3.entity.Goods">
+        SELECT * FROM goods WHERE user_id = #{userId} ORDER BY date DESC
+    </select>
+
+    <select id="selectByKeyword" resultType="com.example.shopping3.entity.Goods">
+        SELECT * FROM goods WHERE status = '审核通过' AND sale_status = '已上架'
+        AND (name LIKE CONCAT('%', #{keyword}, '%') OR content LIKE CONCAT('%', #{keyword}, '%'))
+        ORDER BY date DESC
+    </select>
 </mapper>
